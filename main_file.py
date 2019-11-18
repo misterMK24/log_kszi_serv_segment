@@ -1,16 +1,27 @@
 import re
 import sqlite3
+import os
 
-filename = 'C:\\Трансгаз Казань\\_2019\\rules_kszi_editing\\log_01.txt'
-filename_new = 'C:\\Трансгаз Казань\\_2019\\rules_kszi_editing\\log_01_edited.txt'
+
+raw_logs_dir = 'C:\\Трансгаз Казань\\_2019\\rules_kszi_editing\\raw_logs'
+clear_logs_dir = 'C:\\Трансгаз Казань\\_2019\\rules_kszi_editing\\clear_logs'
+# filename = 'C:\\Трансгаз Казань\\_2019\\rules_kszi_editing\\log_01.txt'
+# filename_new = 'C:\\Трансгаз Казань\\_2019\\rules_kszi_editing\\log_01_edited.txt'
 
 
 def main_func():
-    with open(filename, 'r') as file:
-        with open(filename_new, 'a+') as file_new:
-            for line in file:
-                if re.search('migrate', line):
-                    file_new.write(line)
+    raw_files_list = os.listdir(raw_logs_dir)
+    for log_file in raw_files_list:
+        os.chdir(raw_logs_dir)
+        try:
+            with open(log_file, 'r') as raw_file:
+                os.chdir(clear_logs_dir)
+                with open(log_file, 'a+') as clear_file:
+                    for line in raw_file:
+                        if re.search('migrate', line):
+                            clear_file.write(line)
+        except BaseException as error:
+            print(error)
 
 
 def sqlite_func():
@@ -56,5 +67,5 @@ def sqlite_func():
         print("Error occured:", e.args[0])
     conn_executor.close()
 
-# main_func()
-sqlite_func()
+main_func()
+# sqlite_func()
