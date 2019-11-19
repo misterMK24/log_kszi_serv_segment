@@ -6,7 +6,7 @@ import os
 raw_logs_dir = 'C:\\Трансгаз Казань\\_2019\\rules_kszi_editing\\raw_logs'
 clear_logs_dir = 'C:\\Трансгаз Казань\\_2019\\rules_kszi_editing\\clear_logs'
 # filename = 'C:\\Трансгаз Казань\\_2019\\rules_kszi_editing\\log_01.txt'
-# filename_new = 'C:\\Трансгаз Казань\\_2019\\rules_kszi_editing\\log_01_edited.txt'
+filename_new = 'C:\\Трансгаз Казань\\_2019\\rules_kszi_editing\\log_02.txt'
 
 
 def main_func():
@@ -25,47 +25,58 @@ def main_func():
 
 
 def sqlite_func():
-    ''' creating SQL DB '''
-    # value of the DB rows
-    c_src = 'src_ip'
-    c_dst = 'dst_ip'
-    c_proto = 'proto'
-    c_port = 'port'
-
     # create table log_database.db
     connection = sqlite3.connect('C:\\Трансгаз Казань\\_2019\\rules_kszi_editing\\log_database.db')
-
+    connection_distinct = sqlite3.connect('C:\\Трансгаз Казань\\_2019\\rules_kszi_editing\\log_database_DISTINCT.db')
     # specify cursor to be able to execute SQL commands
     conn_executor = connection.cursor()
-    conn_executor.execute("DROP TABLE IF EXISTS logs")
-    conn_executor.execute('''CREATE TABLE logs
+    conn_executor_distinct = connection_distinct.cursor()
+    # conn_executor.execute("DROP TABLE IF EXISTS logs")
+    conn_executor.execute('''CREATE TABLE IF NOT EXISTS logs
                             (src_ip, dst_ip, proto, service)''')
-
-    # some schema for inserting data
-    schema_insert = """INSERT INTO logs ('src_ip','dst_ip', 'proto', 'service') VALUES (?, ?, ?, ?)"""
-
+    conn_executor_distinct.execute('''CREATE TABLE IF NOT EXISTS logs
+                            (src_ip, dst_ip, proto, service)''')
+    # scheme for inserting data
+    scheme_insert = """INSERT INTO logs ('src_ip','dst_ip','proto','service') VALUES (?, ?, ?, ?)"""
     # go through the file and save changes to DB
+
     count = 0
     list_into_table = []
+    os.chdir(clear_logs_dir)
+    clear_logs_list = os.listdir()
     try:
-        file = open(filename_new, 'r')
-        lines = file.readlines()
-        for line in lines:
-            line_split = line.split(";")
-            splitted_values = [line_split[3], line_split[4], line_split[5], line_split[6]]
-            count += 1
-            list_into_table.append(splitted_values)
-            if count % 100000 == 0 or count % len(lines) == 0:
-                for i in list_into_table:
-                    # print(i)
-                    conn_executor.execute(schema_insert, i)
-                list_into_table.clear()
-                print("some data has been written into a table!")
-            connection.commit()
-            # pass
+        for log_file in clear_logs_list:
+            file = open(log_file, 'r')
+            lines = file.readlines()
+            for line in lines:
+                line_split = line.split(";")
+                splitted_values = [line_split[3], line_split[4], line_split[5], line_split[6]]
+                count += 1
+                list_into_table.append(splitted_values)
+                if count % 200000 == 0 or count % len(lines) == 0:
+                    for i in list_into_table:
+                        conn_executor.execute(scheme_insert, i)
+                    list_into_table.clear()
+                    print("The {0} log entries has been written into a table".format(count))
+                    connection.commit()
     except sqlite3.Error as e:
-        print("Error occured:", e.args[0])
+        print("Error occurred:", e.args[0])
+    list_into_table.clear()
+    print("Execute DISTINCT ...")
+    conn_executor.execute('''SELECT DISTINCT src_ip, dst_ip, proto, service from logs''')
+    print("Executing DISTINCT has been successfully preformed.")
+    list_into_table = conn_executor.fetchall()
     conn_executor.close()
 
-main_func()
-# sqlite_func()
+    # write the whole distinct instances to new DB
+    count = 0
+    print("Starting writing distinct entries into a table")
+    for entry in list_into_table:
+        count += 1
+        conn_executor_distinct.execute(scheme_insert, entry)
+        if count % 200000 == 0 or count % len(list_into_table) == 0:
+            connection_distinct.commit()
+    conn_executor_distinct.close()
+
+# main_func()
+sqlite_func()
