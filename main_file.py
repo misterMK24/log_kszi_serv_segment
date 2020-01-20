@@ -1,8 +1,9 @@
 import re
 import sqlite3
 import os
+import logging
 
-
+logging.basicConfig(filename='C:\\Трансгаз Казань\\_2019\\rules_kszi_editing\\logs.txt', level=logging.INFO)
 raw_logs_dir = 'C:\\Трансгаз Казань\\_2019\\rules_kszi_editing\\raw_logs'
 clear_logs_dir = 'C:\\Трансгаз Казань\\_2019\\rules_kszi_editing\\clear_logs'
 # filename = 'C:\\Трансгаз Казань\\_2019\\rules_kszi_editing\\log_01.txt'
@@ -21,7 +22,8 @@ def main_func():
                         if re.search('migrate', line):
                             clear_file.write(line)
         except BaseException as error:
-            print(error)
+            logging.error("{0}".format(error))
+            # print(error)
 
 
 def sqlite_func():
@@ -49,16 +51,20 @@ def sqlite_func():
             file = open(log_file, 'r')
             lines = file.readlines()
             for line in lines:
-                line_split = line.split(";")
-                splitted_values = [line_split[3], line_split[4], line_split[5], line_split[6]]
-                count += 1
-                list_into_table.append(splitted_values)
-                if count % 200000 == 0 or count % len(lines) == 0:
-                    for i in list_into_table:
-                        conn_executor.execute(scheme_insert, i)
-                    list_into_table.clear()
-                    print("The {0} log entries has been written into a table".format(count))
-                    connection.commit()
+                try:
+                    line_split = line.split(";")
+                    splitted_values = [line_split[3], line_split[4], line_split[5], line_split[6]]
+                    count += 1
+                    list_into_table.append(splitted_values)
+                    if count % 200000 == 0 or count % len(lines) == 0:
+                        for i in list_into_table:
+                            conn_executor.execute(scheme_insert, i)
+                        list_into_table.clear()
+                        print("The {0} log entries has been written into a table".format(count))
+                        connection.commit()
+                except BaseException as error:
+                    logging.info("Current log file is {0} and line is {1}".format(log_file, line))
+                    logging.error("{0}".format(error))
     except sqlite3.Error as e:
         print("Error occurred:", e.args[0])
     list_into_table.clear()
@@ -77,6 +83,7 @@ def sqlite_func():
         if count % 200000 == 0 or count % len(list_into_table) == 0:
             connection_distinct.commit()
     conn_executor_distinct.close()
+
 
 # main_func()
 sqlite_func()
