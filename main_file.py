@@ -76,7 +76,7 @@ def sqlite_func():
 
     # write the whole distinct instances to new DB
     count = 0
-    print("Starting writing distinct entries into a table")
+    print("Start writing distinct entries into a table")
     for entry in list_into_table:
         count += 1
         conn_executor_distinct.execute(scheme_insert, entry)
@@ -85,5 +85,34 @@ def sqlite_func():
     conn_executor_distinct.close()
 
 
+def connection_parsing():
+    destination_distinct = 'C:\\Трансгаз Казань\\_2019\\rules_kszi_editing\\clear_logs\\unique_entries.txt'
+
+    # For SQL
+    connection = sqlite3.connect('C:\\Трансгаз Казань\\_2019\\rules_kszi_editing\\log_database_DISTINCT.db')
+    conn_executor = connection.cursor()
+    # looking for the entries in SQL DB an write results into the file
+    with open(destination_distinct) as file:
+        for entry in file:
+            current_list = entry.split(';')
+            # create a directory for the IP address
+            dir_for_creation = 'C:\\Трансгаз Казань\\_2019\\rules_kszi_editing\\possible_rules_auto\\{0}'. \
+                format(current_list[0])
+            if os.getcwd() != dir_for_creation:
+                os.mkdir(dir_for_creation, mode=0o777)
+                os.chdir(dir_for_creation)
+            # create a file here with the following template: "dst_ip_proto_service"
+            filename_plus_dir = dir_for_creation + '\\{0}_{1}_{2}.txt'.format(current_list[0], current_list[1], current_list[2].rstrip('\n'))
+            file_new = open(filename_plus_dir, 'a+')
+            # making SQL request
+            sql_request_result = conn_executor.execute('''SELECT * FROM logs WHERE dst_ip='{0}' AND proto='{1}'
+                AND service='{2}';'''.format(current_list[0], current_list[1], current_list[2])).fetchall()
+            # print(sql_request_result)
+            for line in sql_request_result:
+                file_new.write(' '.join(line_s for line_s in line))
+            file_new.close()
+
+
 # main_func()
-sqlite_func()
+# sqlite_func()
+connection_parsing()
